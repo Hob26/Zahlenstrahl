@@ -1,0 +1,99 @@
+<!DOCTYPE html><html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zahlenstrahl üben</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#fff;--fg:#1f2937;--mu:#6b7280;--card:#f3f4f6;--ac:#7c3aed;--ok:#16a34a;--no:#dc2626;--line:#374151}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111827;--fg:#f3f4f6;--mu:#9ca3af;--card:#1f2937;--ac:#a78bfa;--ok:#4ade80;--no:#f87171;--line:#d1d5db}}
+:root[data-theme="dark"]{--bg:#111827;--fg:#f3f4f6;--mu:#9ca3af;--card:#1f2937;--ac:#a78bfa;--ok:#4ade80;--no:#f87171;--line:#d1d5db}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:16px;max-width:1100px;margin:auto;-webkit-text-size-adjust:100%}
+h1{font-size:26px;margin:4px 0 12px}h2{font-size:20px;margin:0 0 4px}
+section{background:var(--card);border-radius:16px;padding:14px;margin:16px 0}
+.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button{font:inherit;font-size:18px;min-height:48px;min-width:48px;padding:6px 16px;border-radius:12px;border:2px solid var(--ac);background:transparent;color:var(--fg);cursor:pointer}
+button.on,button.pri{background:var(--ac);color:#fff}
+.ctl{display:flex;align-items:center;gap:10px;margin:8px 0}
+.ctl input{flex:1;max-width:300px;height:36px}.zl{min-width:44px}.hint,.note{color:var(--mu);font-size:14px}
+.sc{overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--bg);border-radius:12px}
+svg{display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin:12px 0}
+.grid label,.grid>div{display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:12px;padding:6px 10px}
+.grid b{font-size:22px;width:28px}
+input[type=text]{font-size:20px;width:100%;min-height:48px;padding:4px 10px;border-radius:10px;border:2px solid var(--mu);background:var(--bg);color:var(--fg)}
+.ok input,.ok{border-color:var(--ok)!important}.no input,.no{border-color:var(--no)!important}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px}
+.cards{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
+.card{font-size:22px;min-width:110px;background:#c9b6dc;color:#1f2937;border:3px solid transparent}
+.card.sel{border-color:var(--ac);box-shadow:0 0 0 3px var(--ac)}
+.card.ok{background:#bbf7d0;border-color:var(--ok)}
+.msg{font-size:18px;min-height:26px}
+</style></head><body>
+<h1>Zahlenstrahl üben</h1>
+<div class="top">
+<b>Niveau:</b><button id="n1">1 – leichter</button><button id="n2">2 – wie im Buch</button>
+<button id="pa" aria-pressed="false">👥 Zu zweit: aus</button>
+</div>
+<p class="note">Tipp: Mit <b>+</b> und dem Regler kannst du in den Zahlenstrahl hineinzoomen. Wische mit dem Finger, um ihn zu verschieben.</p>
+<section id="s1"><h2>1 a) Lies die auf dem Zahlenstrahl markierten Zahlen ab.</h2><div class="body"></div></section>
+<section id="s2"><h2>1 b) Zeige deinem Partner folgende Zahlen auf dem Zahlenstrahl.</h2><div class="body"></div></section>
+<section id="s3"><h2>2 Benenne die markierten Zahlen.</h2><div class="body"></div></section>
+<script>
+const CFG={1:{k:{max:1e4,tick:100,lab:v=>v%1000==0,step:500},m:{max:1e7,tick:1e5,lab:v=>v%1e6==0,step:5e5,mio:1}},
+2:{k:{max:1e4,tick:100,lab:v=>v%1000==0,step:100},m:{max:1e7,tick:1e5,lab:v=>[0,1e6,5e6].includes(v),step:1e5,mio:1}}};
+const COL=["#c9b6dc","#9ed0f5","#e4ec9c","#f8cf9a","#eaa3b5","#c5e6a0","#f5d27a","#9fd8b0","#f4a98c","#a9a6e8"];
+let niv=2,partner=false;
+const fmt=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,"\u202f");
+const lab=(c,v)=>c.mio?(v==0?"0":String(v/1e6).replace(".",",")+" Mio."):fmt(v);
+const $=(s,r=document)=>r.querySelector(s);
+function pick(n,c){const a=[];for(let v=c.step;v<=c.max-c.step;v+=c.step)a.push(v);
+ for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a.slice(0,n)}
+function Line(host,c,o){
+ let z=1;const P=40,Y=112;
+ host.innerHTML='<div class="ctl"><button aria-label="Verkleinern">−</button><input type="range" min="1" max="12" step="0.5" value="1"><button aria-label="Vergrößern">+</button><b class="zl">1×</b></div><div class="sc"><svg></svg></div>';
+ const [bm,bp]=host.querySelectorAll("button"),rg=$("input",host),zl=$(".zl",host),sc=$(".sc",host),svg=$("svg",host);
+ const W=()=>sc.clientWidth*z,X=v=>P+v/c.max*(W()-2*P);
+ function draw(){
+  const w=W();svg.setAttribute("width",w);svg.setAttribute("height",170);
+  let s=`<line x1="${P-14}" x2="${w-6}" y1="${Y}" y2="${Y}" stroke="var(--line)" stroke-width="2.5"/><polygon points="${w-4},${Y} ${w-18},${Y-7} ${w-18},${Y+7}" fill="var(--line)"/>`;
+  for(let i=0;i<=c.max/c.tick;i++){const v=i*c.tick,x=X(v),big=c.lab(v),mid=!big&&i%5==0,h=big?26:mid?18:11;
+   s+=`<line x1="${x}" x2="${x}" y1="${Y-h}" y2="${Y+h}" stroke="var(--line)" stroke-width="${big?2.5:1.5}"/>`;
+   if(big)s+=`<text x="${x}" y="${Y+52}" text-anchor="middle" font-size="20" fill="var(--fg)">${lab(c,v)}</text>`;
+   else if(mid&&z>=3)s+=`<text x="${x}" y="${Y+42}" text-anchor="middle" font-size="13" fill="var(--mu)">${lab(c,v)}</text>`}
+  (o.flags||[]).forEach((f,i)=>{const x=X(f.v);s+=`<line x1="${x}" x2="${x}" y1="${Y}" y2="${Y-78}" stroke="var(--line)" stroke-width="2"/><polygon points="${x},${Y-78} ${x+36},${Y-64} ${x},${Y-50}" fill="${COL[i%10]}" stroke="#374151"/><text x="${x+5}" y="${Y-56}" font-size="14" font-weight="700" fill="#1f2937">${f.l}</text>`});
+  (o.marks||[]).forEach(m=>{const x=X(m.v);s+=`<line x1="${x}" x2="${x}" y1="${Y+30}" y2="${Y-60}" stroke="${m.col}" stroke-width="4"/><circle cx="${x}" cy="${Y-66}" r="10" fill="${m.col}"/>`});
+  svg.innerHTML=s}
+ function setZ(n){const cx=(sc.scrollLeft+sc.clientWidth/2)/W();z=Math.min(12,Math.max(1,n));rg.value=z;zl.textContent=z+"×";draw();sc.scrollLeft=cx*W()-sc.clientWidth/2}
+ bm.onclick=()=>setZ(z-1);bp.onclick=()=>setZ(z+1);rg.oninput=()=>setZ(+rg.value);
+ svg.onclick=e=>{if(!o.onpick)return;const r=svg.getBoundingClientRect();let v=(e.clientX-r.left-P)/(W()-2*P)*c.max;v=Math.max(0,Math.min(c.max,Math.round(v/c.tick)*c.tick));o.onpick(v)};
+ addEventListener("resize",draw);draw();return{draw,o}}
+function parse(t,mio){t=t.toLowerCase().replace(/[\s.\u202f\u00a0]/g,"");if(/mio|million/.test(t))return Math.round(parseFloat(t.replace(",","."))*1e6);return parseInt(t.replace(/\D/g,""))}
+function readTask(sec,kind){
+ const host=$(".body",sec),c=CFG[niv][kind],vals=pick(10,c).sort((a,b)=>a-b),L="ABCDEFGHIJ";
+ host.innerHTML='<div class="line"></div><p class="note">'+(c.mio?"Schreibe die Zahl mit Ziffern, z. B. 2 600 000.":"Schreibe die Zahl mit Ziffern.")+(partner?" Zu zweit: Sagt die Zahl laut und deckt dann die Lösung auf.":"")+'</p><div class="grid"></div><div class="row">'+(partner?"":'<button class="pri">Prüfen</button>')+'<button class="new">Neue Aufgabe</button><b class="score"></b></div>';
+ Line($(".line",host),c,{flags:vals.map((v,i)=>({v,l:L[i]}))});
+ const g=$(".grid",host);
+ g.innerHTML=vals.map((v,i)=>partner?`<div><b>${L[i]}</b><button>Lösung</button><span></span></div>`:`<label><b>${L[i]}</b><input type="text" inputmode="numeric" autocomplete="off"></label>`).join("");
+ if(partner)g.querySelectorAll("button").forEach((b,i)=>b.onclick=()=>{b.nextElementSibling.textContent=fmt(vals[i])});
+ else $(".pri",host).onclick=()=>{let n=0;g.querySelectorAll("label").forEach((l,i)=>{const r=parse($("input",l).value,c.mio)==vals[i];n+=r;l.className=r?"ok":"no"});$(".score",host).textContent=n==10?"🎉 Alles richtig!":n+" von 10 richtig"};
+ $(".new",host).onclick=()=>readTask(sec,kind)}
+function showTask(sec){
+ const host=$(".body",sec),c=CFG[niv].k,vals=pick(9,c),pins={},done={};let sel=null;
+ host.innerHTML='<p class="note">'+(partner?"Partner A liest eine Zahl vor, Partner B tippt auf den Zahlenstrahl. ":"")+'Tippe eine Karte an, dann die Stelle auf dem Zahlenstrahl. Danach „Prüfen“.</p><div class="cards"></div><div class="line"></div><div class="row"><button class="pri">Prüfen</button><button class="new">Neue Aufgabe</button><b class="score"></b></div><div class="msg"></div>';
+ const cd=$(".cards",host),msg=$(".msg",host);
+ cd.innerHTML=vals.map((v,i)=>`<button class="card" data-i="${i}">${fmt(v)}</button>`).join("");
+ const marks=()=>sel==null||pins[sel]==null?[]:[{v:pins[sel],col:done[sel]?"#16a34a":"#7c3aed"}];
+ const ln=Line($(".line",host),c,{marks:marks(),onpick:v=>{if(sel==null||done[sel]){msg.textContent="Wähle zuerst eine Karte aus.";return}pins[sel]=v;ln.o.marks=marks();ln.draw();msg.textContent=""}});
+ cd.querySelectorAll(".card").forEach(b=>b.onclick=()=>{sel=+b.dataset.i;cd.querySelectorAll(".card").forEach(x=>x.classList.toggle("sel",x==b));ln.o.marks=marks();ln.draw();msg.textContent=""});
+ $(".pri",host).onclick=()=>{if(sel==null){msg.textContent="Wähle zuerst eine Karte aus.";return}
+  if(pins[sel]==null){msg.textContent="Tippe auf den Zahlenstrahl.";return}
+  if(pins[sel]==vals[sel]){done[sel]=1;cd.children[sel].classList.add("ok");msg.textContent="✅ Richtig!";ln.o.marks=marks();ln.draw()}
+  else msg.textContent=pins[sel]<vals[sel]?"❌ Zu weit links – zoome hinein und zähle die Striche.":"❌ Zu weit rechts – zoome hinein und zähle die Striche.";
+  const n=Object.keys(done).length;$(".score",host).textContent=n==9?"🎉 Alle geschafft!":n+" von 9 richtig"};
+ $(".new",host).onclick=()=>showTask(sec)}
+function all(){$("#n1").classList.toggle("on",niv==1);$("#n2").classList.toggle("on",niv==2);
+ const p=$("#pa");p.classList.toggle("on",partner);p.textContent="👥 Zu zweit: "+(partner?"an":"aus");p.setAttribute("aria-pressed",partner);
+ readTask($("#s1"),"k");showTask($("#s2"));readTask($("#s3"),"m")}
+$("#n1").onclick=()=>{niv=1;all()};$("#n2").onclick=()=>{niv=2;all()};$("#pa").onclick=()=>{partner=!partner;all()};
+all();
+</script></body></html>
